@@ -1,1 +1,1 @@
-web: python KeuzieToSpeech.py
+web: gunicorn KeuzieToSpeech:app

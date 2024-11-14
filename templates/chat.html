@@ -1,0 +1,231 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .chat-container {
+            width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .message {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+        }
+        .user-msg {
+            background-color: #e0e0e0;
+            padding: 10px;
+            border-radius: 5px;
+            align-self: flex-start;
+        }
+        .ai-msg {
+            background-color: #d4edda;
+            padding: 10px;
+            border-radius: 5px;
+            align-self: flex-end;
+        }
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            padding: 10px 15px;
+            margin-left: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #recordBtn {
+            padding: 10px;
+            margin-left: 10px;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #recordingBtn {
+            background-color: red;
+            color: white;
+        }
+        #Titlebanner {
+            text-align: center;
+            font-size: 60px;
+            font-weight: bold;
+            margin-bottom: 20px; 
+            color: #45a049;
+        }
+        #generatedImage {
+            margin-top: 20px;
+            display: none;
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        #generateImageBtn{
+            padding: 10px 15px;
+            margin-left: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .image-container {
+        display: flex;
+        justify-content: center; 
+        align-items: center;   
+        width: 200;
+        height: 150;   
+    }
+    .center-image {
+        width: 15%; 
+    }
+
+    </style>
+</head>
+<body>
+    <h1 id="Titlebanner">Keuzie</h1>
+    <div class="image-container">
+        <img src="/img/mascotkeuzie.jpeg" alt="Italian Trulli" class="center-image" >
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <!-- Display chat history -->
+        {% for message in chat_history %}
+            <div class="message">
+                <div class="user-msg">{{ message.question }}</div>
+                <div class="ai-msg">{{ message.response }}</div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <!-- User input form for text query -->
+    <form id="questionForm" action="/ask" method="POST" style="display: flex; margin-top: 20px;">
+        <input type="text" id="questionInput" name="question" placeholder="Ask a question..." required>
+        <button type="submit">💬 Send</button>
+        <button type="button" id="recordBtn">🔊 Record</button>
+        <button type="button" id="UseVoiceBtn">🎤 UseVoice</button>
+    </form>
+
+    <!-- User input form for image generation -->
+    <form id="imageForm" style="margin-top: 20px;">
+        <input type="text" id="imagePrompt" placeholder="Enter prompt for AI assistant image generation!" required>
+        <button type="button"  id="generateImageBtn">Generate Image</button>
+    </form>
+
+    <!-- Image display -->
+    <img id="generatedImage" src="/img/generated_image" alt="Generated Image">
+
+    
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <script>
+        const useVoiceBtn = document.getElementById("UseVoiceBtn");
+        const audioPlayer = document.getElementById("audioPlayer");
+
+        // UseVoice button logic
+        useVoiceBtn.addEventListener("click", function () {
+            const audioFilePath = "{{ audio_file }}";
+            console.log("Audio File Path:", audioFilePath);
+
+            // Get the latest audio file path from the backend
+            if (audioFilePath) {
+                audioPlayer.src = audioFilePath; 
+                audioPlayer.play(); 
+            } else {
+                alert("No audio file available to play.");
+            }
+        });
+
+
+
+        // Record Button for Voice Input
+        const recordButton = document.getElementById("recordBtn");
+        const questionInput = document.getElementById("questionInput");
+        let recognition;
+        let isRecording = false;
+        let isGenerating = false;
+
+        // Check for speech recognition support
+        if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "nl";
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = function () { console.log("Voice recognition started. Speak now."); };
+            recognition.onspeechend = function () { recognition.stop(); };
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript;
+                questionInput.value = transcript;
+                document.querySelector("form").submit(); 
+            };
+            recognition.onerror = function (event) { console.log("Error occurred in recognition: " + event.error); };
+        }
+
+        // Trigger recording on button click
+        recordButton.addEventListener("click", function () {
+            if (!isRecording) {
+                recognition.start();
+                recordButton.textContent = "Recording..."; 
+                recordButton.style.backgroundColor = "red";
+                isRecording = true;  
+            } else {
+                recognition.stop();
+                recordButton.textContent = "🎤 Record";
+                recordButton.style.backgroundColor = "#ff5722"; 
+                isRecording = false;  
+            }
+        });
+
+        // Image Generation Button
+        document.getElementById("generateImageBtn").addEventListener("click", function() {
+            const imagePrompt = document.getElementById("imagePrompt").value;
+            generateImageBtn.textContent = "Generating..."; 
+            generateImageBtn.style.backgroundColor = "red";
+            
+            fetch("/generate", {
+                method: "POST",
+                body: new URLSearchParams({ image_prompt: imagePrompt }),
+                headers: { "Content-Type": "application/x-www-form-urlencoded" }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.image_url) {
+
+                    const generatedImage = document.getElementById("generatedImage");
+                    const newImageUrl = data.image_url + "?t=" + new Date().getTime();
+                    generatedImage.src = newImageUrl;  
+                    generatedImage.style.display = "block"; 
+                    generateImageBtn.style.backgroundColor = ""
+                    generateImageBtn.textContent = "Generate Image"
+                } else {
+                    alert("Failed to generate image");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+        });
+    </script>
+</body>
+</html>
